@@ -10,8 +10,8 @@ echo "Deploying to ${SERVER_USER}@${SERVER_HOST}..."
 ssh -i "${SSH_KEY_PATH}" "${SERVER_USER}@${SERVER_HOST}" << 'EOF'
   cd ~/struck
   git pull
-  docker compose down
-  docker compose up --build -d
+  docker-compose down
+  docker-compose up --build -d
 EOF
 
 echo "Deploy complete"
