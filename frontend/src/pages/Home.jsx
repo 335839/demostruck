@@ -13,9 +13,16 @@ function Change({ value, label }) {
   );
 }
 
+const CMS_DEFAULTS = {
+  hero_headline: 'Get a bigger position on assets you believe in',
+  hero_subheadline: 'Limited downside. Simulated. No real money.',
+  disclaimer: 'This is a simulation only. No real investment is made.',
+};
+
 export default function Home() {
   const navigate = useNavigate();
   const [featured, setFeatured] = useState([]);
+  const [cms, setCms] = useState(CMS_DEFAULTS);
 
   useEffect(() => {
     api.get('/assets').then(res => {
@@ -24,6 +31,10 @@ export default function Home() {
         .filter(Boolean);
       setFeatured(picks);
     }).catch(() => {});
+
+    api.get('/cms').then(res => {
+      setCms({ ...CMS_DEFAULTS, ...res.data });
+    }).catch(() => {});
   }, []);
 
   return (
@@ -31,10 +42,10 @@ export default function Home() {
       {/* Hero */}
       <div style={{ padding: '72px 32px 48px', borderBottom: '1px solid var(--border)' }}>
         <h1 style={{ maxWidth: 720, margin: '0 auto 16px' }}>
-          Get a bigger position on assets you believe in
+          {cms.hero_headline}
         </h1>
         <p style={{ fontSize: 20, color: 'var(--text)', maxWidth: 560, margin: '0 auto 36px' }}>
-          Limited downside. Simulated. No real money.
+          {cms.hero_subheadline}
         </p>
         <button
           onClick={() => navigate('/assets')}
@@ -97,7 +108,7 @@ export default function Home() {
         color: 'var(--text)',
         marginTop: 'auto',
       }}>
-        This is a simulation only. No real investment is made.
+        {cms.disclaimer}
       </div>
     </div>
   );

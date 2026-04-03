@@ -10,6 +10,8 @@ const NAV_LINKS = [
   { to: '/admin/offer-rules', label: 'Offer Rules' },
   { to: '/admin/leads',       label: 'Leads' },
   { to: '/admin/users',       label: 'Users' },
+  { to: '/admin/cms',         label: 'CMS' },
+  { to: '/admin/audit-log',   label: 'Audit Log' },
 ];
 
 export default function AdminLayout() {

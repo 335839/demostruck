@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import SessionLocal
-from models import Asset, Scenario, Term, ProtectionPackage
+from models import Asset, CmsContent, Scenario, Term, ProtectionPackage
 
 
 def seed():
@@ -79,6 +79,28 @@ def seed():
             print(f"Inserted {len(packages)} protection packages")
         else:
             print("Protection packages already seeded, skipping")
+
+        # CMS content
+        if db.query(CmsContent).count() == 0:
+            cms_entries = [
+                CmsContent(key="hero_headline",    value="Get a bigger position on assets you believe in"),
+                CmsContent(key="hero_subheadline", value="Limited downside. Simulated. No real money."),
+                CmsContent(key="disclaimer",       value="This is a simulation only. No real investment is made."),
+                CmsContent(key="how_it_works",     value="Choose an asset you believe in. Select your market view and term. Pick a protection package. See your offer."),
+                CmsContent(key="faq_1_q", value="What is a structured product?"),
+                CmsContent(key="faq_1_a", value="A structured product combines an investment with built-in protection, so your downside is limited."),
+                CmsContent(key="faq_2_q", value="Is this real money?"),
+                CmsContent(key="faq_2_a", value="No. This is a simulation only. No real investment or transaction takes place."),
+                CmsContent(key="faq_3_q", value="What is a stop-out?"),
+                CmsContent(key="faq_3_a", value="A stop-out is the price level at which your protection ends and maximum loss is reached."),
+                CmsContent(key="faq_4_q", value="What is the position amount?"),
+                CmsContent(key="faq_4_a", value="The position amount is the total exposure you get on the asset, larger than your investment due to the multiplier."),
+            ]
+            db.add_all(cms_entries)
+            db.flush()
+            print(f"Inserted {len(cms_entries)} CMS entries")
+        else:
+            print("CMS content already seeded, skipping")
 
         db.commit()
         print("Seed complete.")

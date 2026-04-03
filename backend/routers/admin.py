@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from auth import require_admin
 from database import get_db
-from models import Asset, AuditLog, Lead, OfferRule, User
+from models import Asset, AuditLog, CmsContent, Lead, OfferRule, User
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -286,3 +286,92 @@ def update_user(
     db.commit()
     db.refresh(user)
     return {"id": user.id, "email": user.email, "role": user.role, "is_active": user.is_active}
+
+
+# ---------------------------------------------------------------------------
+# CMS Content
+# ---------------------------------------------------------------------------
+
+class CmsUpdate(BaseModel):
+    value: str
+
+
+@router.get("/cms")
+def list_cms(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    entries = db.query(CmsContent).order_by(CmsContent.key).all()
+    return [
+        {"id": e.id, "key": e.key, "value": e.value, "updated_at": e.updated_at}
+        for e in entries
+    ]
+
+
+@router.put("/cms/{key}")
+def upsert_cms(
+    key: str,
+    body: CmsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    entry = db.query(CmsContent).filter(CmsContent.key == key).first()
+    if entry:
+        old_value = entry.value
+        entry.value = body.value
+        entry.updated_by = current_user.id
+    else:
+        old_value = None
+        entry = CmsContent(key=key, value=body.value, updated_by=current_user.id)
+        db.add(entry)
+    db.flush()
+
+    log = AuditLog(
+        user_id=current_user.id,
+        action="update",
+        entity_type="cms_content",
+        entity_id=key,
+        old_value={"value": old_value} if old_value is not None else None,
+        new_value={"value": body.value},
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(entry)
+    return {"id": entry.id, "key": entry.key, "value": entry.value, "updated_at": entry.updated_at}
+
+
+# ---------------------------------------------------------------------------
+# Audit Log
+# ---------------------------------------------------------------------------
+
+@router.get("/audit-log")
+def get_audit_log(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Superadmin only")
+
+    logs = (
+        db.query(AuditLog)
+        .order_by(AuditLog.created_at.desc())
+        .limit(100)
+        .all()
+    )
+
+    user_ids = {l.user_id for l in logs if l.user_id}
+    users = {u.id: u.email for u in db.query(User).filter(User.id.in_(user_ids)).all()}
+
+    return [
+        {
+            "id": l.id,
+            "action": l.action,
+            "entity_type": l.entity_type,
+            "entity_id": l.entity_id,
+            "user_email": users.get(l.user_id),
+            "old_value": l.old_value,
+            "new_value": l.new_value,
+            "created_at": l.created_at,
+        }
+        for l in logs
+    ]

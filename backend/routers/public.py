@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
 from market_data import get_asset_price, get_price_history
-from models import Asset, Lead, OfferRule, ProtectionPackage, SavedOffer, Scenario, Term, User
+from models import Asset, CmsContent, Lead, OfferRule, ProtectionPackage, SavedOffer, Scenario, Term, User
 
 router = APIRouter(prefix="/api", tags=["public"])
 
@@ -231,6 +231,25 @@ def save_offer(
     db.commit()
     db.refresh(saved)
     return {"id": saved.id, "created_at": saved.created_at}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/cms
+# GET /api/cms/{key}
+# ---------------------------------------------------------------------------
+
+@router.get("/cms")
+def list_cms(db: Session = Depends(get_db)):
+    entries = db.query(CmsContent).order_by(CmsContent.key).all()
+    return {e.key: e.value for e in entries}
+
+
+@router.get("/cms/{key}")
+def get_cms_entry(key: str, db: Session = Depends(get_db)):
+    entry = db.query(CmsContent).filter(CmsContent.key == key).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="CMS key not found")
+    return {"key": entry.key, "value": entry.value}
 
 
 @router.get("/offers/saved")

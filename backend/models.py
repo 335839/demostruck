@@ -137,6 +137,16 @@ class SavedOffer(Base):
     user = relationship("User", back_populates="saved_offers")
 
 
+class CmsContent(Base):
+    __tablename__ = "cms_content"
+
+    id = Column(String, primary_key=True, default=new_uuid)
+    key = Column(String, unique=True, nullable=False)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_by = Column(String, ForeignKey("users.id"), nullable=True)
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 

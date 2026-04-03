@@ -16,6 +16,9 @@ import AdminAssets from './pages/admin/AdminAssets';
 import AdminOfferRules from './pages/admin/AdminOfferRules';
 import AdminLeads from './pages/admin/AdminLeads';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminCMS from './pages/admin/AdminCMS';
+import AdminAuditLog from './pages/admin/AdminAuditLog';
+import FAQ from './pages/FAQ';
 
 const ADMIN_ROLES = ['superadmin', 'product_admin', 'content_admin', 'sales_admin'];
 
@@ -50,6 +53,7 @@ function Navbar() {
       </Link>
       <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
         <Link to="/assets" style={linkStyle('/assets')}>Assets</Link>
+        <Link to="/faq" style={linkStyle('/faq')}>FAQ</Link>
         {isAdmin && <Link to="/admin" style={linkStyle('/admin')}>Admin</Link>}
         {isAuthenticated ? (
           <>
@@ -92,6 +96,8 @@ export default function App() {
             <Route path="offer-rules" element={<AdminOfferRules />} />
             <Route path="leads" element={<AdminLeads />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="cms" element={<AdminCMS />} />
+            <Route path="audit-log" element={<AdminAuditLog />} />
           </Route>
 
           {/* Public routes with main navbar */}
@@ -104,6 +110,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/cabinet" element={<Cabinet />} />
+            <Route path="/faq" element={<FAQ />} />
           </Route>
         </Routes>
       </BrowserRouter>
