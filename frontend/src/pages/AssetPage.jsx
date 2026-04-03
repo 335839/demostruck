@@ -6,11 +6,27 @@ import {
 } from 'recharts';
 import api from '../api';
 
+const BADGE_COLORS = {
+  crypto:    { bg: 'rgba(170,59,255,0.12)', color: '#aa3bff' },
+  commodity: { bg: 'rgba(234,179,8,0.12)',  color: '#b45309' },
+  equity:    { bg: 'rgba(59,130,246,0.12)', color: '#1d4ed8' },
+  etf:       { bg: 'rgba(34,197,94,0.12)',  color: '#15803d' },
+};
+
+function Badge({ cls }) {
+  const s = BADGE_COLORS[cls] || {};
+  return (
+    <span style={{ background: s.bg, color: s.color, borderRadius: 4, padding: '3px 10px', fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>
+      {cls}
+    </span>
+  );
+}
+
 function Change({ value, label }) {
   const pos = value >= 0;
   return (
     <span style={{ color: pos ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-      {pos ? '+' : ''}{value?.toFixed(2)}% {label}
+      {pos ? '+' : ''}{value?.toFixed(2)}%{label ? ` ${label}` : ''}
     </span>
   );
 }
@@ -28,6 +44,7 @@ function SelectorBtn({ label, selected, onClick }) {
         fontSize: 14,
         fontWeight: selected ? 600 : 400,
         cursor: 'pointer',
+        transition: 'all 0.15s',
       }}
     >
       {label}
@@ -43,14 +60,15 @@ function PackageCard({ pkg, selected, onClick }) {
         border: `2px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
         background: selected ? 'var(--accent-bg)' : 'var(--bg)',
         borderRadius: 10,
-        padding: '16px 20px',
+        padding: '14px 18px',
         cursor: 'pointer',
-        flex: '1 1 140px',
+        flex: '1 1 130px',
         textAlign: 'left',
+        transition: 'all 0.15s',
       }}
     >
-      <div style={{ fontWeight: 700, color: 'var(--text-h)', marginBottom: 4 }}>{pkg.title}</div>
-      <div style={{ fontSize: 13, color: 'var(--text)' }}>{pkg.description}</div>
+      <div style={{ fontWeight: 700, color: 'var(--text-h)', marginBottom: 4, fontSize: 15 }}>{pkg.title}</div>
+      <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.4 }}>{pkg.description}</div>
     </div>
   );
 }
@@ -70,6 +88,7 @@ export default function AssetPage() {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [retry, setRetry] = useState(0);
 
   const [scenario, setScenario] = useState(null);
   const [term, setTerm] = useState(null);
@@ -79,6 +98,8 @@ export default function AssetPage() {
   const [offerError, setOfferError] = useState(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     Promise.all([
       api.get(`/assets/${id}`),
       api.get('/config'),
@@ -86,10 +107,10 @@ export default function AssetPage() {
       .then(([assetRes, configRes]) => {
         setAsset(assetRes.data);
         setConfig(configRes.data);
-        setLoading(false);
       })
-      .catch(() => { setError('Failed to load asset.'); setLoading(false); });
-  }, [id]);
+      .catch(() => setError('Failed to load asset data.'))
+      .finally(() => setLoading(false));
+  }, [id, retry]);
 
   const handleGetOffer = async () => {
     if (!scenario || !term || !pkg) {
@@ -115,23 +136,42 @@ export default function AssetPage() {
     }
   };
 
-  if (loading) return <div style={{ padding: 48, textAlign: 'center', color: 'var(--text)' }}>Loading…</div>;
-  if (error)   return <div style={{ padding: 48, textAlign: 'center', color: '#dc2626' }}>{error}</div>;
+  if (loading) return <div className="spinner" />;
 
-  // Thin out history for x-axis labels
+  if (error) return (
+    <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+      <p style={{ color: '#dc2626', marginBottom: 16 }}>{error}</p>
+      <button
+        onClick={() => setRetry(r => r + 1)}
+        style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+      >
+        Retry
+      </button>
+    </div>
+  );
+
   const history = asset.history || [];
   const step = Math.max(1, Math.floor(history.length / TICK_COUNT));
   const ticks = history.filter((_, i) => i % step === 0).map(d => d.date);
 
   return (
-    <div style={{ padding: '40px 32px', textAlign: 'left' }}>
+    <div className="page-wrap">
+      {/* Back link */}
+      <button
+        onClick={() => navigate('/assets')}
+        style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 14, padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 4 }}
+      >
+        ← All assets
+      </button>
+
       {/* Asset header */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 8 }}>
-          <h1 style={{ margin: 0, fontSize: 32 }}>{asset.name}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+          <h1 style={{ margin: 0, fontSize: 32, lineHeight: 1 }}>{asset.name}</h1>
           <span style={{ color: 'var(--text)', fontSize: 18 }}>{asset.ticker}</span>
+          {asset.asset_class && <Badge cls={asset.asset_class} />}
         </div>
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'baseline', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-h)' }}>
             {asset.currency} {asset.price?.toLocaleString()}
           </span>
@@ -139,19 +179,16 @@ export default function AssetPage() {
           <Change value={asset.change_1y_pct} label="1Y" />
         </div>
         {asset.short_description && (
-          <p style={{ marginTop: 8, color: 'var(--text)', maxWidth: 560 }}>{asset.short_description}</p>
+          <p style={{ marginTop: 10, color: 'var(--text)', maxWidth: 560, lineHeight: 1.6, fontSize: 15 }}>
+            {asset.short_description}
+          </p>
         )}
       </div>
 
       {/* Price chart */}
       {history.length > 0 && (
-        <div style={{
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '24px 16px 16px',
-          marginBottom: 40,
-        }}>
-          <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 1 }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '20px 16px 16px', marginBottom: 40 }}>
+          <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>
             6-month price history
           </p>
           <ResponsiveContainer width="100%" height={220}>
@@ -171,7 +208,7 @@ export default function AssetPage() {
               <Tooltip
                 formatter={(v) => [`${asset.currency} ${v.toLocaleString()}`, 'Close']}
                 labelFormatter={formatDate}
-                contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}
+                contentStyle={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}
               />
               <Line
                 type="monotone"
@@ -189,56 +226,39 @@ export default function AssetPage() {
       {/* Offer builder */}
       {config && (
         <div style={{ maxWidth: 640 }}>
-          <h2 style={{ marginBottom: 24 }}>Build your offer</h2>
+          <h2 style={{ marginBottom: 28, marginTop: 0 }}>Build your offer</h2>
 
-          {/* Scenario */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10 }}>Market view</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10, fontSize: 15 }}>Market view</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {config.scenarios.map(s => (
-                <SelectorBtn
-                  key={s.id}
-                  label={s.display_title}
-                  selected={scenario === s.id}
-                  onClick={() => setScenario(s.id)}
-                />
+                <SelectorBtn key={s.id} label={s.display_title} selected={scenario === s.id} onClick={() => setScenario(s.id)} />
               ))}
             </div>
           </div>
 
-          {/* Term */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10 }}>Term</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10, fontSize: 15 }}>Term</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {config.terms.map(t => (
-                <SelectorBtn
-                  key={t.id}
-                  label={t.display_title}
-                  selected={term === t.id}
-                  onClick={() => setTerm(t.id)}
-                />
+                <SelectorBtn key={t.id} label={t.display_title} selected={term === t.id} onClick={() => setTerm(t.id)} />
               ))}
             </div>
           </div>
 
-          {/* Protection package */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10 }}>Protection</div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10, fontSize: 15 }}>Protection package</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {config.packages.map(p => (
-                <PackageCard
-                  key={p.id}
-                  pkg={p}
-                  selected={pkg === p.id}
-                  onClick={() => setPkg(p.id)}
-                />
+                <PackageCard key={p.id} pkg={p} selected={pkg === p.id} onClick={() => setPkg(p.id)} />
               ))}
             </div>
           </div>
 
-          {/* Amount */}
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10 }}>Amount ({asset.currency})</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-h)', marginBottom: 10, fontSize: 15 }}>
+              Amount ({asset.currency})
+            </div>
             <input
               type="number"
               value={amount}
@@ -249,15 +269,18 @@ export default function AssetPage() {
                 borderRadius: 8,
                 padding: '10px 16px',
                 fontSize: 18,
-                width: 200,
+                width: 180,
                 color: 'var(--text-h)',
                 background: 'var(--bg)',
+                fontFamily: 'inherit',
               }}
             />
           </div>
 
           {offerError && (
-            <div style={{ color: '#dc2626', fontSize: 14, marginBottom: 16 }}>{offerError}</div>
+            <div style={{ color: '#dc2626', fontSize: 14, marginBottom: 16, padding: '10px 14px', background: 'rgba(220,38,38,0.06)', borderRadius: 8 }}>
+              {offerError}
+            </div>
           )}
 
           <button
@@ -268,7 +291,7 @@ export default function AssetPage() {
               color: '#fff',
               border: 'none',
               borderRadius: 8,
-              padding: '14px 36px',
+              padding: '14px 40px',
               fontSize: 16,
               fontWeight: 600,
               cursor: submitting ? 'default' : 'pointer',

@@ -8,45 +8,65 @@ const DEFAULT_FAQS = [
   { q: 'What is the position amount?', a: 'The position amount is the total exposure you get on the asset, larger than your investment due to the multiplier.' },
 ];
 
+function FAQItem({ q, a }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
+      onClick={() => setOpen(o => !o)}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', gap: 16 }}>
+        <span style={{ fontWeight: 600, fontSize: 16, color: 'var(--text-h)', lineHeight: 1.4 }}>{q}</span>
+        <span style={{ color: 'var(--accent)', fontSize: 20, flexShrink: 0, fontWeight: 300 }}>
+          {open ? '−' : '+'}
+        </span>
+      </div>
+      {open && (
+        <div style={{ paddingBottom: 20, fontSize: 15, color: 'var(--text)', lineHeight: 1.7 }}>
+          {a}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FAQ() {
   const [faqs, setFaqs] = useState(DEFAULT_FAQS);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/cms').then(res => {
-      const data = res.data;
-      const built = [];
-      let i = 1;
-      while (data[`faq_${i}_q`] && data[`faq_${i}_a`]) {
-        built.push({ q: data[`faq_${i}_q`], a: data[`faq_${i}_a`] });
-        i++;
-      }
-      if (built.length > 0) setFaqs(built);
-    }).catch(() => {});
+    api.get('/cms')
+      .then(res => {
+        const data = res.data;
+        const built = [];
+        let i = 1;
+        while (data[`faq_${i}_q`] && data[`faq_${i}_a`]) {
+          built.push({ q: data[`faq_${i}_q`], a: data[`faq_${i}_a`] });
+          i++;
+        }
+        if (built.length > 0) setFaqs(built);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '48px 24px' }}>
-      <h1 style={{ marginBottom: 40, fontSize: 32 }}>Frequently Asked Questions</h1>
+    <div className="page-wrap" style={{ maxWidth: 760 }}>
+      <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 36 }}>FAQ</h1>
+      <p style={{ color: 'var(--text)', marginBottom: 40, fontSize: 16 }}>
+        Frequently asked questions about Struck and structured products.
+      </p>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-        {faqs.map((item, idx) => (
-          <div
-            key={idx}
-            style={{
-              borderTop: '1px solid var(--border)',
-              padding: '24px 0',
-              ...(idx === faqs.length - 1 ? { borderBottom: '1px solid var(--border)' } : {}),
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: 17, color: 'var(--text-h)', marginBottom: 10 }}>
-              {item.q}
-            </div>
-            <div style={{ fontSize: 15, color: 'var(--text)', lineHeight: 1.6 }}>
-              {item.a}
-            </div>
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="spinner" />
+      ) : (
+        <div>
+          {faqs.map((item, idx) => (
+            <FAQItem key={idx} q={item.q} a={item.a} />
+          ))}
+          <div style={{ borderTop: '1px solid var(--border)' }} />
+        </div>
+      )}
     </div>
   );
 }

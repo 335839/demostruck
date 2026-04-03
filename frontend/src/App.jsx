@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { BrowserRouter, Link, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -9,6 +10,7 @@ import LeadForm from './pages/LeadForm';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Cabinet from './pages/Cabinet';
+import FAQ from './pages/FAQ';
 
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -18,56 +20,106 @@ import AdminLeads from './pages/admin/AdminLeads';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminCMS from './pages/admin/AdminCMS';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
-import FAQ from './pages/FAQ';
 
 const ADMIN_ROLES = ['superadmin', 'product_admin', 'content_admin', 'sales_admin'];
+
+function DisclaimerBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem('disclaimer_dismissed') === '1'; } catch { return false; }
+  });
+
+  const dismiss = () => {
+    try { localStorage.setItem('disclaimer_dismissed', '1'); } catch {}
+    setDismissed(true);
+  };
+
+  if (dismissed) return null;
+
+  return (
+    <div className="disclaimer-banner">
+      <span>Simulation only — no real investment is made</span>
+      <button onClick={dismiss} aria-label="Dismiss">✕</button>
+    </div>
+  );
+}
 
 function Navbar() {
   const { pathname } = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const isAdmin = user && ADMIN_ROLES.includes(user.role);
+  const close = () => setMenuOpen(false);
+  const handleLogout = async () => { await logout(); navigate('/'); close(); };
 
-  const linkStyle = (path) => ({
-    color: pathname.startsWith(path) && path !== '/' ? 'var(--text-h)' : pathname === '/' && path === '/' ? 'var(--text-h)' : 'var(--text)',
-    fontWeight: (pathname.startsWith(path) && path !== '/') || (pathname === '/' && path === '/') ? 600 : 400,
+  const lk = (path) => ({
+    color: (path === '/' ? pathname === '/' : pathname.startsWith(path)) ? 'var(--text-h)' : 'var(--text)',
+    fontWeight: (path === '/' ? pathname === '/' : pathname.startsWith(path)) ? 600 : 400,
     textDecoration: 'none',
     fontSize: 15,
   });
 
-  const handleLogout = async () => { await logout(); navigate('/'); };
+  const mlink = {
+    display: 'block',
+    padding: '11px 0',
+    fontSize: 15,
+    color: 'var(--text-h)',
+    textDecoration: 'none',
+    borderBottom: '1px solid var(--border)',
+  };
 
   return (
-    <nav style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 32px',
-      height: 56,
-      borderBottom: '1px solid var(--border)',
-      flexShrink: 0,
-    }}>
-      <Link to="/" style={{ textDecoration: 'none', fontWeight: 800, fontSize: 20, color: 'var(--text-h)', letterSpacing: -0.5 }}>
-        Struck
-      </Link>
-      <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-        <Link to="/assets" style={linkStyle('/assets')}>Assets</Link>
-        <Link to="/faq" style={linkStyle('/faq')}>FAQ</Link>
-        {isAdmin && <Link to="/admin" style={linkStyle('/admin')}>Admin</Link>}
+    <nav className="nav-root">
+      <div className="nav-inner">
+        <Link to="/" style={{ textDecoration: 'none', fontWeight: 800, fontSize: 20, color: 'var(--text-h)', letterSpacing: -0.5 }}>
+          Struck
+        </Link>
+
+        {/* Desktop links */}
+        <div className="nav-links">
+          <Link to="/assets" style={lk('/assets')}>Assets</Link>
+          <Link to="/faq" style={lk('/faq')}>FAQ</Link>
+          {isAdmin && <Link to="/admin" style={lk('/admin')}>Admin</Link>}
+          {isAuthenticated ? (
+            <>
+              <Link to="/cabinet" style={lk('/cabinet')}>Cabinet</Link>
+              <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 15, padding: 0 }}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" style={lk('/login')}>Login</Link>
+              <Link to="/register" style={{ ...lk('/register'), background: 'var(--accent)', color: '#fff', padding: '6px 14px', borderRadius: 6, fontWeight: 600 }}>
+                Register
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* Hamburger */}
+        <button className="nav-hamburger" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
+          {menuOpen ? '✕' : '☰'}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      <div className={`nav-mobile${menuOpen ? ' open' : ''}`}>
+        <Link to="/assets" style={mlink} onClick={close}>Assets</Link>
+        <Link to="/faq" style={mlink} onClick={close}>FAQ</Link>
+        {isAdmin && <Link to="/admin" style={mlink} onClick={close}>Admin</Link>}
         {isAuthenticated ? (
           <>
-            <Link to="/cabinet" style={linkStyle('/cabinet')}>Cabinet</Link>
-            <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', fontSize: 15, padding: 0 }}>
+            <Link to="/cabinet" style={mlink} onClick={close}>Cabinet</Link>
+            <button onClick={handleLogout} style={{ background: 'none', border: 'none', padding: '11px 0', fontSize: 15, color: 'var(--text-h)', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
               Logout
             </button>
           </>
         ) : (
           <>
-            <Link to="/login" style={linkStyle('/login')}>Login</Link>
-            <Link to="/register" style={{ ...linkStyle('/register'), background: 'var(--accent)', color: '#fff', padding: '6px 14px', borderRadius: 6, fontWeight: 600 }}>
-              Register
-            </Link>
+            <Link to="/login" style={mlink} onClick={close}>Login</Link>
+            <Link to="/register" style={{ ...mlink, color: 'var(--accent)', fontWeight: 600, borderBottom: 'none' }} onClick={close}>Register</Link>
           </>
         )}
       </div>
@@ -78,6 +130,7 @@ function Navbar() {
 function Layout() {
   return (
     <>
+      <DisclaimerBanner />
       <Navbar />
       <Outlet />
     </>
@@ -100,7 +153,7 @@ export default function App() {
             <Route path="audit-log" element={<AdminAuditLog />} />
           </Route>
 
-          {/* Public routes with main navbar */}
+          {/* Public routes with navbar + disclaimer banner */}
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/assets" element={<AssetList />} />
