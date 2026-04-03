@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from typing import Any, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from database import get_db
 from market_data import get_asset_price, get_price_history
-from models import Asset, OfferRule, ProtectionPackage, Scenario, Term
+from models import Asset, Lead, OfferRule, ProtectionPackage, SavedOffer, Scenario, Term, User
 
 router = APIRouter(prefix="/api", tags=["public"])
 
@@ -175,3 +178,73 @@ def calculate_offer(body: OfferRequest, db: Session = Depends(get_db)):
         "entry_price": entry_price,
         "currency": currency,
     }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/leads
+# ---------------------------------------------------------------------------
+
+class LeadRequest(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    comment: Optional[str] = None
+    policy_consent: bool
+    offer_snapshot: Any = None
+
+
+@router.post("/leads", status_code=status.HTTP_201_CREATED)
+def create_lead(body: LeadRequest, db: Session = Depends(get_db)):
+    if not body.policy_consent:
+        raise HTTPException(status_code=400, detail="Policy consent is required")
+    lead = Lead(
+        name=body.name,
+        email=body.email,
+        phone=body.phone,
+        comment=body.comment,
+        policy_consent=body.policy_consent,
+        offer_snapshot=body.offer_snapshot,
+    )
+    db.add(lead)
+    db.commit()
+    db.refresh(lead)
+    return {"id": lead.id, "created_at": lead.created_at}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/offers/save   (auth required)
+# GET  /api/offers/saved  (auth required)
+# ---------------------------------------------------------------------------
+
+class SaveOfferRequest(BaseModel):
+    offer_snapshot: Any
+
+
+@router.post("/offers/save", status_code=status.HTTP_201_CREATED)
+def save_offer(
+    body: SaveOfferRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    saved = SavedOffer(user_id=current_user.id, offer_snapshot=body.offer_snapshot)
+    db.add(saved)
+    db.commit()
+    db.refresh(saved)
+    return {"id": saved.id, "created_at": saved.created_at}
+
+
+@router.get("/offers/saved")
+def get_saved_offers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    offers = (
+        db.query(SavedOffer)
+        .filter(SavedOffer.user_id == current_user.id)
+        .order_by(SavedOffer.created_at.desc())
+        .all()
+    )
+    return [
+        {"id": o.id, "created_at": o.created_at, "offer_snapshot": o.offer_snapshot}
+        for o in offers
+    ]

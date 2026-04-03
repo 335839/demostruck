@@ -5,9 +5,25 @@ from sqlalchemy.orm import Session
 
 from auth import require_admin
 from database import get_db
-from models import Asset, AuditLog, OfferRule, User
+from models import Asset, AuditLog, Lead, OfferRule, User
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+# ---------------------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------------------
+
+@router.get("/stats")
+def get_stats(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    return {
+        "total_leads": db.query(Lead).count(),
+        "total_users": db.query(User).count(),
+        "total_assets": db.query(Asset).count(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -203,3 +219,70 @@ def update_offer_rule(
     db.commit()
     db.refresh(rule)
     return rule_to_dict(rule)
+
+
+# ---------------------------------------------------------------------------
+# Leads
+# ---------------------------------------------------------------------------
+
+@router.get("/leads")
+def list_leads(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    leads = db.query(Lead).order_by(Lead.created_at.desc()).all()
+    return [
+        {
+            "id": l.id,
+            "name": l.name,
+            "email": l.email,
+            "phone": l.phone,
+            "created_at": l.created_at,
+            "offer_snapshot": l.offer_snapshot,
+        }
+        for l in leads
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Users
+# ---------------------------------------------------------------------------
+
+class UserUpdate(BaseModel):
+    is_active: Optional[bool] = None
+
+
+@router.get("/users")
+def list_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "role": u.role,
+            "is_active": u.is_active,
+            "is_verified": u.is_verified,
+            "created_at": u.created_at,
+        }
+        for u in users
+    ]
+
+
+@router.put("/users/{user_id}")
+def update_user(
+    user_id: str,
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(user, field, value)
+    db.commit()
+    db.refresh(user)
+    return {"id": user.id, "email": user.email, "role": user.role, "is_active": user.is_active}
