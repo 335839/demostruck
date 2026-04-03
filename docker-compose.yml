@@ -1,5 +1,8 @@
 services:
   backend:
+    dns:
+    - 8.8.8.8
+    - 8.8.4.4
     build: ./backend
     env_file:
       - .env
