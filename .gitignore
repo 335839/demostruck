@@ -44,3 +44,6 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Private keys
+infra/struck-key.pem
