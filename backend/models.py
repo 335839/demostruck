@@ -4,7 +4,7 @@ from sqlalchemy import (
     Column, String, Boolean, Integer, Float, Text,
     DateTime, ForeignKey, UniqueConstraint
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -16,7 +16,7 @@ def new_uuid():
 class Asset(Base):
     __tablename__ = "assets"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
+    id = Column(String, primary_key=True, default=new_uuid)
     name = Column(String, nullable=False)
     ticker = Column(String, nullable=False)
     asset_class = Column(String, nullable=False)  # crypto/commodity/equity/etf
@@ -34,7 +34,7 @@ class Asset(Base):
 class Scenario(Base):
     __tablename__ = "scenarios"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
+    id = Column(String, primary_key=True, default=new_uuid)
     code = Column(String, nullable=False)  # up/down/flat
     display_title = Column(String, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
@@ -48,7 +48,7 @@ class Scenario(Base):
 class Term(Base):
     __tablename__ = "terms"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
+    id = Column(String, primary_key=True, default=new_uuid)
     month_count = Column(Integer, nullable=False)
     display_title = Column(String, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
@@ -62,7 +62,7 @@ class Term(Base):
 class ProtectionPackage(Base):
     __tablename__ = "protection_packages"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
+    id = Column(String, primary_key=True, default=new_uuid)
     title = Column(String, nullable=False)
     description = Column(Text)
     risk_order = Column(Integer, nullable=False, default=0)
@@ -79,11 +79,11 @@ class OfferRule(Base):
         UniqueConstraint("asset_id", "scenario_id", "term_id", "package_id", name="uq_offer_rule"),
     )
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
-    asset_id = Column(UUID(as_uuid=False), ForeignKey("assets.id"), nullable=False)
-    scenario_id = Column(UUID(as_uuid=False), ForeignKey("scenarios.id"), nullable=False)
-    term_id = Column(UUID(as_uuid=False), ForeignKey("terms.id"), nullable=False)
-    package_id = Column(UUID(as_uuid=False), ForeignKey("protection_packages.id"), nullable=False)
+    id = Column(String, primary_key=True, default=new_uuid)
+    asset_id = Column(String, ForeignKey("assets.id"), nullable=False)
+    scenario_id = Column(String, ForeignKey("scenarios.id"), nullable=False)
+    term_id = Column(String, ForeignKey("terms.id"), nullable=False)
+    package_id = Column(String, ForeignKey("protection_packages.id"), nullable=False)
     multiplier = Column(Float, nullable=False)
     premium_pct = Column(Float, nullable=False)
     stop_out_pct = Column(Float, nullable=False)
@@ -100,7 +100,7 @@ class OfferRule(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
+    id = Column(String, primary_key=True, default=new_uuid)
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
@@ -116,7 +116,7 @@ class User(Base):
 class Lead(Base):
     __tablename__ = "leads"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
+    id = Column(String, primary_key=True, default=new_uuid)
     name = Column(String)
     email = Column(String)
     phone = Column(String)
@@ -129,8 +129,8 @@ class Lead(Base):
 class SavedOffer(Base):
     __tablename__ = "saved_offers"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
-    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=False)
+    id = Column(String, primary_key=True, default=new_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     offer_snapshot = Column(JSONB)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -140,8 +140,8 @@ class SavedOffer(Base):
 class AuditLog(Base):
     __tablename__ = "audit_log"
 
-    id = Column(UUID(as_uuid=False), primary_key=True, default=new_uuid)
-    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
+    id = Column(String, primary_key=True, default=new_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
     action = Column(String, nullable=False)
     entity_type = Column(String, nullable=False)
     entity_id = Column(String)
