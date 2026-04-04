@@ -97,3 +97,22 @@ users, leads, saved_offers, audit_log, cms_content
 - DATABASE_URL uses pooler: aws-0-eu-west-1.pooler.supabase.com:6543
 - .env is gitignored — never commit it
 - infra/struck-key.pem is gitignored — never commit it
+
+## Current state
+- All 6 iterations complete and deployed
+- Home page: premium dark theme, animated particles, ticker strip,
+  how it works section, footer
+- Design system: dark background (#0a0a0f), gold accent (#f0b429),
+  CSS variables in index.css
+- Live at: http://3.120.83.162
+- Last major change: premium dark home page redesign
+
+## Known issues / TODOs
+- nginx requires manual restart after docker-compose up --build
+  (docker-compose restart nginx)
+- Supabase free tier pauses after inactivity — restore at supabase.com
+- Offer rules matrix must be populated manually via /admin/offer-rules
+  before offer calculator works
+- No domain or SSL yet
+- No email notifications for leads yet
+- Password reset flow is API-ready but no UI yet
